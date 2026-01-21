@@ -7,7 +7,9 @@ description: "Configure a repo's agent instruction files (AGENTS.md, CLAUDE.md, 
 
 Does basic setup to make a code repository ready to use devvit skills.
 
-1. Ensure the rules file adds a block about working with Devvit
+1. Ensure the devvit-docs skill is added. If not, skip. If it is, call `devvit-docs` with "how does redis work" to make sure things are configured correctly. If there is an error, present it to the user.
+
+2. Ensure the rules file adds a block about working with Devvit
 
 Please do the following:
 
@@ -21,7 +23,7 @@ Always use the devvit-docs skill when I need library/API documentation about any
 - If no instruction file exists, create `AGENTS.md` with the block above.
 - Add success or failure to summary of skill call result
 
-2. Present Results to User
+3. Present Results to User
 
 Tell the user the changes you made.
 
@@ -30,3 +32,4 @@ Tell the user the changes you made.
 - **Permission errors**: Verify the repo is writable.
 - **Wrong location**: Ensure the repo root is being edited.
 - **No changes**: The rule block already exists; no update needed.
+- **Missing skill**:  Ask the user to run `npx add-skill reddit/devvit-skills` to add the missing skill if they want to utilize that feature.
