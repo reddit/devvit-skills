@@ -15,7 +15,7 @@ skills/
   {skill-name}/           # kebab-case directory name
     SKILL.md              # Required: skill definition
     scripts/              # Required: executable scripts
-      {script-name}.sh    # Bash scripts (preferred)
+      {script-name}.js    # Node.js scripts (preferred)
   {skill-name}.zip        # Required: packaged for distribution
 ```
 
@@ -23,7 +23,7 @@ skills/
 
 - **Skill directory**: `kebab-case` (e.g., `devvit-deploy`, `log-monitor`)
 - **SKILL.md**: Always uppercase, always this exact filename
-- **Scripts**: `kebab-case.sh` (e.g., `deploy.sh`, `fetch-logs.sh`)
+- **Scripts**: `kebab-case.js` (e.g., `deploy.js`, `fetch-logs.js`)
 - **Zip file**: Must match directory name exactly: `{skill-name}.zip`
 
 ### SKILL.md Format
@@ -45,7 +45,7 @@ description: {One sentence describing when to use this skill. Include trigger ph
 ## Usage
 
 ```bash
-bash /mnt/skills/user/{skill-name}/scripts/{script}.sh [args]
+node /mnt/skills/user/{skill-name}/scripts/{script}.js [args]
 ```
 
 **Arguments:**
@@ -79,21 +79,13 @@ Skills are loaded on-demand — only the skill name and description are loaded a
 
 ### Script Requirements
 
-- Use `#!/bin/bash` shebang
-- Use `set -e` for fail-fast behavior
-- Write status messages to stderr: `echo "Message" >&2`
+All skills must be **Windows-compatible**. Prefer cross-platform Node.js scripts and avoid shell-specific constructs.
+
+- Use Node.js scripts by default (`.js`)
+- Use `process.stderr.write(...)` for status messages
 - Write machine-readable output (JSON) to stdout
-- Include a cleanup trap for temp files
-- Reference the script path as `/mnt/skills/user/{skill-name}/scripts/{script}.sh`
-
-### Creating the Zip Package
-
-After creating or updating a skill:
-
-```bash
-cd skills
-zip -r {skill-name}.zip {skill-name}/
-```
+- Ensure cleanup of temp files/directories
+- Reference the script path as `/mnt/skills/user/{skill-name}/scripts/{script}.js`
 
 ### End-User Installation
 
