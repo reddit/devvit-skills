@@ -1,6 +1,6 @@
 ---
 name: devvit-skill-setup
-description: Configure a repo's agent instruction files (AGENTS.md, CLAUDE.md, etc.) to auto-apply Devvit skill guidance. Trigger phrases: "configure skills", "setup skills", "add devvit docs rule".
+description: "Configure a repo's agent instruction files (AGENTS.md, CLAUDE.md, etc.) to auto-apply Devvit skill guidance. Trigger phrases: \"configure skills\", \"setup skills\", \"add devvit docs rule\"."
 ---
 
 # Devvit Skill Setup
