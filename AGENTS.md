@@ -16,7 +16,6 @@ skills/
     SKILL.md              # Required: skill definition
     scripts/              # Required: executable scripts
       {script-name}.js    # Node.js scripts (preferred)
-  {skill-name}.zip        # Required: packaged for distribution
 ```
 
 ### Naming Conventions
@@ -24,14 +23,18 @@ skills/
 - **Skill directory**: `kebab-case` (e.g., `devvit-deploy`, `log-monitor`)
 - **SKILL.md**: Always uppercase, always this exact filename
 - **Scripts**: `kebab-case.js` (e.g., `deploy.js`, `fetch-logs.js`)
-- **Zip file**: Must match directory name exactly: `{skill-name}.zip`
 
 ### SKILL.md Format
 
-```markdown
+````markdown
 ---
-name: {skill-name}
-description: {One sentence describing when to use this skill. Include trigger phrases like "Deploy my app", "Check logs", etc.}
+name: { skill-name }
+description:
+  {
+    One sentence describing when to use this skill. Include trigger phrases like "Deploy my app",
+    "Check logs",
+    etc.,
+  }
 ---
 
 # {Skill Title}
@@ -47,8 +50,10 @@ description: {One sentence describing when to use this skill. Include trigger ph
 ```bash
 node /mnt/skills/user/{skill-name}/scripts/{script}.js [args]
 ```
+````
 
 **Arguments:**
+
 - `arg1` - Description (defaults to X)
 
 **Examples:**
@@ -65,6 +70,7 @@ node /mnt/skills/user/{skill-name}/scripts/{script}.js [args]
 ## Troubleshooting
 
 {Common issues and solutions, especially network/permissions errors}
+
 ```
 
 ### Best Practices for Context Efficiency
@@ -86,30 +92,4 @@ All skills must be **Windows-compatible**. Prefer cross-platform Node.js scripts
 - Write machine-readable output (JSON) to stdout
 - Ensure cleanup of temp files/directories
 - Reference the script path as `/mnt/skills/user/{skill-name}/scripts/{script}.js`
-
-### End-User Installation
-
-Document these two installation methods for users:
-
-**Claude Code:**
-```bash
-cp -r skills/{skill-name} ~/.claude/skills/
 ```
-
-**Codex/OpenAI CLI:**
-```bash
-cp -r skills/{skill-name} ~/.codex/skills/
-```
-
-**Opencode:**
-```bash
-cp -r skills/{skill-name} ~/.opencode/skills/
-```
-
-**Copilot (Chat/IDE):**
-Add the skill to workspace/project knowledge, or paste `SKILL.md` contents into the conversation.
-
-**Claude (Web):**
-Add the skill to project knowledge or paste `SKILL.md` contents into the conversation.
-
-If the skill requires network access, instruct users to add required domains in the agent's settings (for example, `claude.ai/settings/capabilities` for Claude Web).

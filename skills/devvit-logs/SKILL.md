@@ -1,6 +1,6 @@
 ---
 name: devvit-logs
-description: "Stream Devvit logs for an installed app (trigger phrases: \"devvit logs\", \"stream logs\", \"check logs\", \"show logs\"). Requires the user to provide the target subreddit."
+description: 'Stream Devvit logs for an installed app (trigger phrases: "devvit logs", "stream logs", "check logs", "show logs"). Requires the user to provide the target subreddit.'
 ---
 
 # Devvit Logs
@@ -21,11 +21,13 @@ node /mnt/skills/user/devvit-logs/scripts/devvit-logs.js <subreddit> [app-name] 
 ```
 
 **Arguments:**
+
 - `subreddit` - Required. Subreddit to stream logs from.
 - `app-name` - Optional. App name if streaming from another folder.
 - `--since=Xd` - Optional. Historical logs window (e.g., `--since=30m`, `--since=1d`).
 
 **Examples:**
+
 ```bash
 node /mnt/skills/user/devvit-logs/scripts/devvit-logs.js my-subreddit
 node /mnt/skills/user/devvit-logs/scripts/devvit-logs.js my-subreddit my-app --since=1h

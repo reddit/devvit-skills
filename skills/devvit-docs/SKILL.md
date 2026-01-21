@@ -24,6 +24,7 @@ ls node_modules/.cache/devvit-docs 2>/dev/null
 ```
 
 Windows (PowerShell):
+
 ```powershell
 Test-Path "node_modules\.cache\devvit-docs"
 ```
@@ -35,6 +36,7 @@ git -C node_modules/.cache/devvit-docs remote -v
 ```
 
 Windows (PowerShell):
+
 ```powershell
 git -C "node_modules\.cache\devvit-docs" remote -v
 ```
@@ -46,6 +48,7 @@ git -C node_modules/.cache/devvit-docs pull --ff-only
 ```
 
 Windows (PowerShell):
+
 ```powershell
 git -C "node_modules\.cache\devvit-docs" pull --ff-only
 ```
@@ -60,6 +63,7 @@ git clone https://github.com/reddit/devvit-docs.git node_modules/.cache/devvit-d
 ```
 
 Windows (PowerShell):
+
 ```powershell
 git clone https://github.com/reddit/devvit-docs.git "node_modules\.cache\devvit-docs"
 ```

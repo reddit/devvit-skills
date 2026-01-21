@@ -1,0 +1,10 @@
+{
+  "name": "devvit-skills",
+  "private": true,
+  "scripts": {
+    "prettier": "prettier --write \"**/*.md\""
+  },
+  "devDependencies": {
+    "prettier": "3.8.1"
+  }
+}
