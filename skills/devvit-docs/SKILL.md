@@ -17,51 +17,51 @@ This skill is **exclusive** to `reddit/devvit-docs`:
 
 ### 1. Check for Local Availability
 
-First, check if the Devvit docs repository already exists locally:
+First, check if the Devvit docs repository already exists locally (from the current project root):
 
 ```bash
-ls /tmp/devvit-docs 2>/dev/null
+ls node_modules/.cache/devvit-docs 2>/dev/null
 ```
 
 Windows (PowerShell):
 ```powershell
-Test-Path "$env:TEMP\devvit-docs"
+Test-Path "node_modules\.cache\devvit-docs"
 ```
 
 If it exists locally, verify it is the correct repo:
 
 ```bash
-git -C /tmp/devvit-docs remote -v
+git -C node_modules/.cache/devvit-docs remote -v
 ```
 
 Windows (PowerShell):
 ```powershell
-git -C "$env:TEMP\devvit-docs" remote -v
+git -C "node_modules\.cache\devvit-docs" remote -v
 ```
 
 If you suspect docs have changed, update it:
 
 ```bash
-git -C /tmp/devvit-docs pull --ff-only
+git -C node_modules/.cache/devvit-docs pull --ff-only
 ```
 
 Windows (PowerShell):
 ```powershell
-git -C "$env:TEMP\devvit-docs" pull --ff-only
+git -C "node_modules\.cache\devvit-docs" pull --ff-only
 ```
 
 ### 2. Clone (Only) the Devvit Docs Repository
 
-If not available locally, clone **only** `reddit/devvit-docs` into the standard location:
+If not available locally, clone **only** `reddit/devvit-docs` into the project cache:
 
 ```bash
-mkdir -p /tmp
-git clone https://github.com/reddit/devvit-docs.git /tmp/devvit-docs
+mkdir -p node_modules/.cache
+git clone https://github.com/reddit/devvit-docs.git node_modules/.cache/devvit-docs
 ```
 
 Windows (PowerShell):
 ```powershell
-git clone https://github.com/reddit/devvit-docs.git "$env:TEMP\devvit-docs"
+git clone https://github.com/reddit/devvit-docs.git "node_modules\.cache\devvit-docs"
 ```
 
 ### 3. Determine the Correct Versioned Docs Directory
@@ -77,9 +77,9 @@ Rules:
   - `dependencies["@devvit/start"]`
 - Parse version strings like `0.12.9-next-...` → `0.12`.
 - Choose docs root in this order:
-- If `/tmp/devvit-docs/versioned_docs/version-X.Y` exists, use it as primary.
-- Else, fall back to `/tmp/devvit-docs/docs` (main/current docs).
-- Windows paths use `$env:TEMP\devvit-docs\...` for the same directories.
+- If `node_modules/.cache/devvit-docs/versioned_docs/version-X.Y` exists, use it as primary.
+- Else, fall back to `node_modules/.cache/devvit-docs/docs` (main/current docs).
+- Windows paths use `node_modules\.cache\devvit-docs\...` for the same directories.
 
 Optional helper to compute `X.Y` (run in the user's repo root):
 
@@ -98,15 +98,15 @@ Research the repository contents to answer the question:
 Example prompt for the agent:
 
 ```
-Explore the repository at /tmp/devvit-docs to answer: {user's question}
+Explore the repository at node_modules/.cache/devvit-docs to answer: {user's question}
 
 First, determine the user's Devvit version (X.Y) from their package.json and prefer:
-- /tmp/devvit-docs/versioned_docs/version-X.Y (if it exists)
-- otherwise /tmp/devvit-docs/docs
+- node_modules/.cache/devvit-docs/versioned_docs/version-X.Y (if it exists)
+- otherwise node_modules/.cache/devvit-docs/docs
 
 If on Windows, use:
-- $env:TEMP\devvit-docs\versioned_docs\version-X.Y
-- otherwise $env:TEMP\devvit-docs\docs
+- node_modules\.cache\devvit-docs\versioned_docs\version-X.Y
+- otherwise node_modules\.cache\devvit-docs\docs
 
 Focus on:
 - The most relevant markdown docs and guides (and their surrounding context)
