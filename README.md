@@ -12,7 +12,10 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 npx add-skill reddit/devvit-skills
 ```
 
-Then, open your agent and prompt, "Please setup my repository using devvit-skills-setup"
+Then, open your agent and prompt:
+```
+Please setup my repository using devvit-skills-setup
+```
 
 ## Available Skills
 
