@@ -1,6 +1,6 @@
 ---
 name: devvit-logs
-description: Stream Devvit logs for an installed app (trigger phrases: "devvit logs", "stream logs", "check logs", "show logs"). Requires the user to provide the target subreddit.
+description: "Stream Devvit logs for an installed app (trigger phrases: \"devvit logs\", \"stream logs\", \"check logs\", \"show logs\"). Requires the user to provide the target subreddit."
 ---
 
 # Devvit Logs
