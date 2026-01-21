@@ -4,6 +4,12 @@ A collection of skills for AI coding agents focused on building, maintaining, an
 
 Skills follow the [Agent Skills](https://agentskills.io/) format.
 
+## Installation
+
+```bash
+npx add-skill reddit/devvit-skills
+```
+
 ## Available Skills
 
 ### devvit-docs
@@ -42,11 +48,7 @@ devvit logs for r/my-subreddit
 stream logs for r/my-subreddit my-app since 1h
 ```
 
-## Installation
 
-```bash
-npx add-skill reddit/devvit-skills
-```
 
 ## Usage
 
