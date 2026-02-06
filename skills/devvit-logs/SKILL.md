@@ -17,8 +17,10 @@ Stream log events from an installed Devvit app for quick debugging. This skill w
 ## Usage
 
 ```bash
-node /mnt/skills/user/devvit-logs/scripts/devvit-logs.js <subreddit> [app-name] [--since=1h]
+node ./scripts/devvit-logs.cjs <subreddit> [app-name] [--since=1h]
 ```
+
+Script path is relative to this skill's directory.
 
 **Arguments:**
 
@@ -29,8 +31,8 @@ node /mnt/skills/user/devvit-logs/scripts/devvit-logs.js <subreddit> [app-name] 
 **Examples:**
 
 ```bash
-node /mnt/skills/user/devvit-logs/scripts/devvit-logs.js my-subreddit
-node /mnt/skills/user/devvit-logs/scripts/devvit-logs.js my-subreddit my-app --since=1h
+node ./scripts/devvit-logs.cjs my-subreddit
+node ./scripts/devvit-logs.cjs my-subreddit my-app --since=1h
 ```
 
 ## Output

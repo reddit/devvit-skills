@@ -4,7 +4,15 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ## Repository Overview
 
-A collection of skills for working with Devvit deployments. Skills are packaged instructions and scripts that extend agent capabilities.
+A skills store for [Devvit](https://developers.reddit.com/) development. Skills are packaged instructions and scripts that extend AI agent capabilities. End users install them via:
+
+```bash
+npx skills add reddit/devvit-skills
+```
+
+This copies (or symlinks) each skill directory into the consumer's agent-specific location (e.g., `.cursor/skills/devvit-docs/` for Cursor, `.claude/skills/devvit-docs/` for Claude Code). The agent discovers skills by scanning those directories and reading the `SKILL.md` frontmatter.
+
+Skills follow the [Agent Skills specification](https://agentskills.io).
 
 ## Creating a New Skill
 
@@ -12,29 +20,26 @@ A collection of skills for working with Devvit deployments. Skills are packaged 
 
 ```
 skills/
-  {skill-name}/           # kebab-case directory name
-    SKILL.md              # Required: skill definition
-    scripts/              # Required: executable scripts
-      {script-name}.js    # Node.js scripts (preferred)
+  {skill-name}/             # kebab-case directory name
+    SKILL.md                # Required: skill definition
+    scripts/                # Optional: executable scripts
+      {script-name}.cjs     # Node.js scripts (CommonJS)
 ```
+
+When installed, the entire `{skill-name}/` directory is copied into the consumer's project. Everything inside it (scripts, data files, etc.) travels together and is accessible relative to the SKILL.md.
 
 ### Naming Conventions
 
 - **Skill directory**: `kebab-case` (e.g., `devvit-deploy`, `log-monitor`)
 - **SKILL.md**: Always uppercase, always this exact filename
-- **Scripts**: `kebab-case.js` (e.g., `deploy.js`, `fetch-logs.js`)
+- **Scripts**: `kebab-case.cjs` (e.g., `deploy.cjs`, `fetch-logs.cjs`). Use `.cjs` so scripts work in consumer projects that have `"type": "module"`.
 
 ### SKILL.md Format
 
 ````markdown
 ---
-name: { skill-name }
-description:
-  {
-    One sentence describing when to use this skill. Include trigger phrases like "Deploy my app",
-    "Check logs",
-    etc.,
-  }
+name: {skill-name}
+description: One sentence describing when to use this skill. Include trigger phrases.
 ---
 
 # {Skill Title}
@@ -48,34 +53,37 @@ description:
 ## Usage
 
 ```bash
-node /mnt/skills/user/{skill-name}/scripts/{script}.js [args]
+node ./scripts/{script}.cjs [args]
 ```
-````
+
+Script paths are relative to this skill's directory.
 
 **Arguments:**
 
 - `arg1` - Description (defaults to X)
 
 **Examples:**
-{Show 2-3 common usage patterns}
+
+```bash
+node ./scripts/{script}.js example-arg
+```
 
 ## Output
 
-{Show example output users will see}
+{Example output the agent will see}
 
 ## Present Results to User
 
-{Template for how Claude should format results when presenting to users}
+{Template for how the agent should format results when presenting to users}
 
 ## Troubleshooting
 
-{Common issues and solutions, especially network/permissions errors}
-
-```
+{Common issues and solutions}
+````
 
 ### Best Practices for Context Efficiency
 
-Skills are loaded on-demand — only the skill name and description are loaded at startup. The full `SKILL.md` loads into context only when the agent decides the skill is relevant. To minimize context usage across agents:
+Skills are loaded on-demand — only the skill name and description are loaded at startup. The full `SKILL.md` loads into context only when the agent decides the skill is relevant. To minimize context usage:
 
 - **Keep SKILL.md under 500 lines** — put detailed reference material in separate files
 - **Write specific descriptions** — helps the agent know exactly when to activate the skill
@@ -85,11 +93,11 @@ Skills are loaded on-demand — only the skill name and description are loaded a
 
 ### Script Requirements
 
-All skills must be **Windows-compatible**. Prefer cross-platform Node.js scripts and avoid shell-specific constructs.
+All skills must work on **Windows, Linux, and macOS**. Prefer cross-platform Node.js scripts and avoid shell-specific constructs (no `bash -c`, no `/bin/sh`, no PowerShell).
 
-- Use Node.js scripts by default (`.js`)
+- Use Node.js scripts with `.cjs` extension (CommonJS — works regardless of consumer's `"type"` field)
 - Use `process.stderr.write(...)` for status messages
 - Write machine-readable output (JSON) to stdout
+- Use `path.join()` for all file paths — never hardcode `/` or `\`
 - Ensure cleanup of temp files/directories
-- Reference the script path as `/mnt/skills/user/{skill-name}/scripts/{script}.js`
-```
+- Script paths are relative to the skill directory (e.g., `./scripts/my-script.cjs`)

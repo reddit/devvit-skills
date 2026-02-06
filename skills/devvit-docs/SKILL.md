@@ -1,133 +1,66 @@
 ---
 name: devvit-docs
-description: Look up Devvit documentation and reference material exclusively from the reddit/devvit-docs repository. Use when the user asks a question about Devvit APIs, patterns, configuration, or examples and you need authoritative guidance.
+description: 'Look up Devvit documentation from the reddit/devvit-docs repository. Use when the user asks about Devvit APIs, patterns, configuration, or examples (trigger phrases: "how do I", "devvit docs", "show me the docs", "API reference").'
 ---
 
-# Devvit Docs (Exclusive)
+# Devvit Docs
 
-Look up Devvit documentation by exploring the **single canonical repository**: `https://github.com/reddit/devvit-docs`.
+Look up Devvit documentation from `reddit/devvit-docs`.
 
-This skill is **exclusive** to `reddit/devvit-docs`:
+**Constraints:**
 
-- Do not use other repositories (including templates, forks, or examples from elsewhere) as sources of truth.
-- Do not use third-party docs, blog posts, or web search results as sources of truth.
-- If `reddit/devvit-docs` does not contain the answer, say so explicitly and cite the closest relevant file/section you did find.
+- Use **only** `reddit/devvit-docs` as the source of truth.
+- Do not use other repos, forks, blog posts, or web search results.
+- If the answer isn't found, say so and cite the closest relevant file.
 
-## Workflow
+## How It Works
 
-### 1. Check for Local Availability
+1. Run the `ensure-docs.js` script to clone or refresh the local docs cache.
+2. Read the JSON output to get the docs directory path.
+3. Search that directory to answer the user's question.
+4. Cite specific files/sections in your answer.
 
-First, check if the Devvit docs repository already exists locally (from the current project root):
-
-```bash
-ls node_modules/.cache/devvit-docs 2>/dev/null
-```
-
-Windows (PowerShell):
-
-```powershell
-Test-Path "node_modules\.cache\devvit-docs"
-```
-
-If it exists locally, verify it is the correct repo:
+## Usage
 
 ```bash
-git -C node_modules/.cache/devvit-docs remote -v
+node ./scripts/ensure-docs.cjs [--force] [--ttl <hours>] [--project-dir <path>]
 ```
 
-Windows (PowerShell):
+Script path is relative to this skill's directory.
 
-```powershell
-git -C "node_modules\.cache\devvit-docs" remote -v
-```
+- `--force` — Pull regardless of cache age
+- `--ttl <hours>` — Cache TTL in hours (default: 24)
+- `--project-dir <path>` — User's project root for version detection (default: cwd)
 
-If you suspect docs have changed, update it:
+**Examples:**
 
 ```bash
-git -C node_modules/.cache/devvit-docs pull --ff-only
+node ./scripts/ensure-docs.cjs
+node ./scripts/ensure-docs.cjs --force
 ```
 
-Windows (PowerShell):
+## Output
 
-```powershell
-git -C "node_modules\.cache\devvit-docs" pull --ff-only
+```json
+{
+  "docsRoot": "node_modules/.cache/devvit-docs/versioned_docs/version-0.11",
+  "repoDir": "node_modules/.cache/devvit-docs",
+  "appDevvitVersion": "0.11"
+}
 ```
 
-### 2. Clone (Only) the Devvit Docs Repository
+- `docsRoot` — The directory to search. Versioned if a matching version was found, otherwise `docs/`.
+- `repoDir` — Root of the cloned repo (use as fallback if versioned docs are incomplete).
+- `appDevvitVersion` — Devvit version from the user's `package.json`, or `null`.
 
-If not available locally, clone **only** `reddit/devvit-docs` into the project cache:
+## Present Results to User
 
-```bash
-mkdir -p node_modules/.cache
-git clone https://github.com/reddit/devvit-docs.git node_modules/.cache/devvit-docs
-```
+- Quote the specific doc file and section supporting each claim.
+- Provide a minimal code example if the docs include one.
+- If the docs don't cover it, say so and suggest the closest material found.
 
-Windows (PowerShell):
+## Troubleshooting
 
-```powershell
-git clone https://github.com/reddit/devvit-docs.git "node_modules\.cache\devvit-docs"
-```
-
-### 3. Determine the Correct Versioned Docs Directory
-
-Prefer searching `versioned_docs/` based on the user's **Devvit package version** (from their `package.json`).
-
-Rules:
-
-- Read the user's `package.json`.
-- Determine `X.Y` from one of these fields (first match wins):
-  - `dependencies.devvit`
-  - `dependencies["@devvit/web"]`
-  - `dependencies["@devvit/start"]`
-- Parse version strings like `0.12.9-next-...` → `0.12`.
-- Choose docs root in this order:
-- If `node_modules/.cache/devvit-docs/versioned_docs/version-X.Y` exists, use it as primary.
-- Else, fall back to `node_modules/.cache/devvit-docs/docs` (main/current docs).
-- Windows paths use `node_modules\.cache\devvit-docs\...` for the same directories.
-
-Optional helper to compute `X.Y` (run in the user's repo root):
-
-```bash
-node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("package.json","utf8"));const d=p.dependencies||{};const v=d.devvit||d["@devvit/web"]||d["@devvit/start"]||"";const m=String(v).match(/(\d+)\.(\d+)/);process.stdout.write((m?`${m[1]}.${m[2]}`:"") + "\n")'
-```
-
-### 4. Research the Repository (Version-Aware)
-
-Research the repository contents to answer the question:
-
-- Search the selected versioned docs directory first (if applicable).
-- If needed, also consult `/tmp/devvit-docs/docs` for broader context (but prefer versioned truth when available).
-- Prefer reading the most relevant markdown docs, guides, and examples, and always connect claims back to what you found inside this repo.
-
-Example prompt for the agent:
-
-```
-Explore the repository at node_modules/.cache/devvit-docs to answer: {user's question}
-
-First, determine the user's Devvit version (X.Y) from their package.json and prefer:
-- node_modules/.cache/devvit-docs/versioned_docs/version-X.Y (if it exists)
-- otherwise node_modules/.cache/devvit-docs/docs
-
-If on Windows, use:
-- node_modules\.cache\devvit-docs\versioned_docs\version-X.Y
-- otherwise node_modules\.cache\devvit-docs\docs
-
-Focus on:
-- The most relevant markdown docs and guides (and their surrounding context)
-- Any official examples, templates, or snippets referenced by the docs
-- Configuration references (e.g., `devvit.json`, routing/menu/forms/triggers docs) if applicable
-- Versioning/“next” notes and migration guidance if present
-
-Constraints:
-- Use ONLY information from this repository.
-- If the repo does not contain the answer, report that explicitly and suggest the closest relevant docs found.
-```
-
-### 5. Synthesize and Answer
-
-Use the research findings to provide a clear, accurate answer grounded in `reddit/devvit-docs`.
-
-When answering:
-
-- Prefer quoting or pointing to the specific doc section/file that supports the claim.
-- Provide a minimal, correct example if the docs include one.
+- **`git` not found** — Requires `git` on PATH.
+- **Network errors** — Script uses existing cache if pull fails.
+- **Stale docs** — Use `--force` to bypass the TTL cache.
