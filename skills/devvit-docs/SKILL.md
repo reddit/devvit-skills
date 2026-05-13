@@ -1,6 +1,6 @@
 ---
 name: devvit-docs
-description: 'Look up Devvit documentation from the reddit/devvit-docs repository. Use when the user asks about Devvit APIs, patterns, configuration, or examples (trigger phrases: "how do I", "devvit docs", "show me the docs", "API reference").'
+description: "Search Devvit documentation, find code examples, explain API usage, and retrieve configuration patterns from the reddit/devvit-docs repository. Use when the user asks about Devvit APIs, patterns, configuration, or examples (trigger phrases: \"how do I\", \"devvit docs\", \"show me the docs\", \"API reference\")."
 ---
 
 # Devvit Docs
@@ -15,10 +15,11 @@ Look up Devvit documentation from `reddit/devvit-docs`.
 
 ## How It Works
 
-1. Run the `ensure-docs.js` script to clone or refresh the local docs cache.
-2. Read the JSON output to get the docs directory path.
-3. Search that directory to answer the user's question.
-4. Cite specific files/sections in your answer.
+1. Run the `ensure-docs.cjs` script to clone or refresh the local docs cache.
+2. Read the JSON output to get the `docsRoot` directory path.
+3. Verify `docsRoot` exists and contains `.md` files. If missing, fall back to `repoDir/docs/`.
+4. Search that directory to answer the user's question (e.g., `find <docsRoot> -name "*.md" | xargs grep -li "<search term>"`).
+5. Cite specific files/sections in your answer.
 
 ## Usage
 
