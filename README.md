@@ -9,7 +9,7 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 ## Installation
 
 ```bash
-npx add-skill reddit/devvit-skills
+npx skills add reddit/devvit-skills
 ```
 
 Then, open your agent and prompt:
