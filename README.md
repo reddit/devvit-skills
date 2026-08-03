@@ -40,27 +40,6 @@ Explain how to add a custom post action in Devvit
 Find the docs for scheduled triggers in Devvit
 ```
 
-### devvit-logs
-
-Stream logs for an installed Devvit app for quick debugging. Wraps `devvit logs` and captures a short window of output.
-
-**Use when:**
-
-- "devvit logs for r/my-subreddit"
-- "stream logs for my app"
-- "check logs for this install"
-- "show logs since 1h"
-
-**Examples:**
-
-```
-devvit logs for r/my-subreddit
-```
-
-```
-stream logs for r/my-subreddit my-app since 1h
-```
-
 ## Usage
 
 Skills are automatically available once installed. The agent will use them when relevant tasks are detected.
