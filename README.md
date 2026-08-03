@@ -12,9 +12,10 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 npx skills add reddit/devvit-skills
 ```
 
-Then, open your agent and prompt:
-```
-Please setup my repository using devvit-skills-setup
+Then, copy and paste this rule into your project's `AGENTS.md`:
+
+```md
+Always use the devvit-docs skill when I need library or API documentation for Devvit, including code generation and setup or configuration steps, without requiring me to explicitly ask. This includes Devvit capabilities such as Redis, the Reddit API, Media, and more, because Devvit has specific rules and documentation.
 ```
 
 ## Available Skills
