@@ -373,17 +373,6 @@ function main() {
     replaceWithFreshClone(repoDir, cacheBase);
     touchMeta(metaPath);
     refreshed = true;
-  } else if (!isBloblessPartialClone(repoDir)) {
-    log("Legacy full cache detected - migrating to a sparse partial clone...");
-    try {
-      replaceWithFreshClone(repoDir, cacheBase);
-      touchMeta(metaPath);
-      refreshed = true;
-    } catch (error) {
-      log(
-        `Sparse migration failed - using existing cache: ${formatError(error)}`,
-      );
-    }
   } else {
     // Reapply the canonical patterns so older sparse caches pick up any additions.
     configureSparseDocs(repoDir);

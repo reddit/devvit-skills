@@ -16,7 +16,7 @@ Look up Devvit documentation from `reddit/devvit-docs`.
 ## How It Works
 
 1. Run the `ensure-docs.cjs` script to clone or refresh the project-local docs cache.
-2. Let the script maintain a blobless sparse clone containing every tracked Markdown and MDX file under `docs/` and `versioned_docs/`, plus `versions.json`. The script verifies the checkout against the Git tree on every run and migrates legacy full clones when possible.
+2. Let the script maintain a blobless sparse clone containing every tracked Markdown and MDX file under `docs/` and `versioned_docs/`, plus `versions.json`. The script verifies the checkout against the Git tree on every run.
 3. Read the JSON output to get the docs directory path.
 4. Search the Markdown and MDX files in each `searchRoots` directory, in order, using `rg` when available or another recursive text-search tool as a fallback. Search exact API names and relevant keywords, then open the strongest matches and read their surrounding sections.
 5. Do not search or cite files under any path in `excludeRoots`.
@@ -76,7 +76,7 @@ node ./scripts/ensure-docs.cjs --cache-dir ./tmp/devvit-cache
 - `matchedVersion` — Whether `docsRoot` matched the detected app version.
 - `appDevvitVersion` — Devvit version from the user's `package.json`, or `null`.
 - `docsRepoCommit` — Commit hash of the docs repo cache, or `null` if unavailable.
-- `cloneMode` — `sparse-partial` for the expected text-only clone, or `legacy-full` when migration could not complete and the existing cache was retained.
+- `cloneMode` — `sparse-partial` for the expected text-only clone, or `legacy-full` for an existing full clone.
 - `docsFileCount` — Number of tracked Markdown and MDX documentation files verified in the checkout.
 
 ## Present Results to User
