@@ -3,17 +3,15 @@
 /**
  * Ensures reddit/devvit-docs is cloned locally and reasonably fresh.
  * Cross-platform (Windows, Linux, macOS) — Node.js built-ins + git only.
- *
- * Outputs JSON to stdout: { docsRoot, repoDir, searchRoots, excludeRoots, appDevvitVersion }
  */
 
-const { execFileSync } = require("child_process");
-const fs = require("fs");
-const path = require("path");
+const { execFileSync } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
+const { parseArgs } = require("node:util");
 
 const REPO_URL = "https://github.com/reddit/devvit-docs.git";
 const DEFAULT_TTL_HOURS = 24;
-const REDDIT_API_PATH = ["docs", "api", "redditapi"];
 const PUBLIC_API_PATH = ["api", "public-api"];
 const SPARSE_DOC_PATTERNS = [
   "/docs/**/*.md",
@@ -24,55 +22,57 @@ const SPARSE_DOC_PATTERNS = [
 ];
 const DOC_FILE_PATTERN = /\.(?:md|mdx)$/i;
 
-function parseArgs(argv) {
-  const args = {
-    force: false,
-    ttlHours: DEFAULT_TTL_HOURS,
-    projectDir: process.cwd(),
-    cacheDir: null,
+function readOptions(argv) {
+  const { values } = parseArgs({
+    args: argv.slice(2),
+    options: {
+      force: { type: "boolean", default: false },
+      ttl: { type: "string", default: String(DEFAULT_TTL_HOURS) },
+      "project-dir": { type: "string", default: process.cwd() },
+      "cache-dir": { type: "string" },
+    },
+    strict: true,
+  });
+
+  const ttlHours = Number(values.ttl);
+  if (!Number.isFinite(ttlHours) || ttlHours < 0) {
+    throw new Error("--ttl must be a non-negative number of hours.");
+  }
+
+  return {
+    force: values.force,
+    ttlHours,
+    projectDir: path.resolve(values["project-dir"]),
+    cacheDir: values["cache-dir"] ? path.resolve(values["cache-dir"]) : null,
   };
-  for (let i = 2; i < argv.length; i++) {
-    if (argv[i] === "--force") {
-      args.force = true;
-    } else if (argv[i] === "--ttl") {
-      if (!argv[i + 1]) fail("--ttl requires a number of hours.");
-      args.ttlHours = Number(argv[++i]);
-    } else if (argv[i] === "--project-dir") {
-      if (!argv[i + 1]) fail("--project-dir requires a path.");
-      args.projectDir = argv[++i];
-    } else if (argv[i] === "--cache-dir") {
-      if (!argv[i + 1]) fail("--cache-dir requires a path.");
-      args.cacheDir = argv[++i];
-    } else {
-      fail(`Unknown argument: ${argv[i]}`);
-    }
-  }
-
-  args.projectDir = path.resolve(args.projectDir);
-  args.cacheDir = args.cacheDir ? path.resolve(args.cacheDir) : null;
-  if (!Number.isFinite(args.ttlHours) || args.ttlHours < 0) {
-    fail("--ttl must be a non-negative number of hours.");
-  }
-
-  return args;
 }
 
-function log(msg) {
-  process.stderr.write(`[devvit-docs] ${msg}\n`);
+function createLayout(options) {
+  const cacheDir =
+    options.cacheDir ||
+    path.join(options.projectDir, "node_modules", ".cache", "devvit-skills");
+  const repoDir = path.join(cacheDir, "devvit-docs");
+  const docsDir = path.join(repoDir, "docs");
+
+  return {
+    cacheDir,
+    repoDir,
+    markerPath: path.join(cacheDir, ".devvit-docs-fetched"),
+    packagePath: path.join(options.projectDir, "package.json"),
+    docsDir,
+    versionedDocsDir: path.join(repoDir, "versioned_docs"),
+    redditApiDir: path.join(docsDir, "api", "redditapi"),
+    publicApiDir: path.join(docsDir, ...PUBLIC_API_PATH),
+  };
 }
 
-function fail(msg) {
-  process.stderr.write(`[devvit-docs] Error: ${msg}\n`);
-  process.exit(1);
+function log(message) {
+  process.stderr.write(`[devvit-docs] ${message}\n`);
 }
 
 function formatError(error) {
-  if (error && error.stderr) {
-    const stderr = String(error.stderr).trim();
-    if (stderr) return stderr;
-  }
-  if (error && error.message) return error.message;
-  return String(error);
+  const stderr = error?.stderr ? String(error.stderr).trim() : "";
+  return stderr || error?.message || String(error);
 }
 
 function git(...args) {
@@ -82,37 +82,28 @@ function git(...args) {
   }).trim();
 }
 
-function isGitRepo(dir) {
+function tryGit(...args) {
   try {
-    const topLevel = git("-C", dir, "rev-parse", "--show-toplevel");
-    const normalize = (value) => {
-      let resolved;
-      try {
-        resolved = fs.realpathSync(value);
-      } catch {
-        resolved = path.resolve(value);
-      }
-      return process.platform === "win32" ? resolved.toLowerCase() : resolved;
-    };
-    return normalize(topLevel) === normalize(dir);
-  } catch {
-    return false;
-  }
-}
-
-function getGitConfig(repoDir, key) {
-  try {
-    return git("-C", repoDir, "config", "--get", key);
+    return git(...args);
   } catch {
     return null;
   }
 }
 
-function isBloblessPartialClone(repoDir) {
-  return (
-    getGitConfig(repoDir, "remote.origin.promisor") === "true" &&
-    getGitConfig(repoDir, "remote.origin.partialclonefilter") === "blob:none"
-  );
+function canonicalPath(value) {
+  const normalizeCase = (resolved) =>
+    process.platform === "win32" ? resolved.toLowerCase() : resolved;
+
+  try {
+    return normalizeCase(fs.realpathSync(value));
+  } catch {
+    return normalizeCase(path.resolve(value));
+  }
+}
+
+function isGitRepo(dir) {
+  const topLevel = tryGit("-C", dir, "rev-parse", "--show-toplevel");
+  return topLevel !== null && canonicalPath(topLevel) === canonicalPath(dir);
 }
 
 function configureSparseDocs(repoDir) {
@@ -127,7 +118,7 @@ function configureSparseDocs(repoDir) {
   );
 }
 
-function cloneRepo(repoDir) {
+function cloneRepo(targetDir) {
   git(
     "clone",
     "--depth",
@@ -135,90 +126,122 @@ function cloneRepo(repoDir) {
     "--filter=blob:none",
     "--no-checkout",
     REPO_URL,
-    repoDir,
+    targetDir,
   );
-  configureSparseDocs(repoDir);
-  git("-C", repoDir, "checkout");
+  configureSparseDocs(targetDir);
+  git("-C", targetDir, "checkout");
 }
 
-function replaceWithFreshClone(repoDir, cacheBase) {
+function removeQuietly(target) {
+  try {
+    fs.rmSync(target, { recursive: true, force: true });
+  } catch (error) {
+    log(`Cleanup failed for ${target}: ${formatError(error)}`);
+  }
+}
+
+function restoreBackup(repoDir, backupDir) {
+  if (fs.existsSync(repoDir) || !fs.existsSync(backupDir)) return;
+
+  try {
+    fs.renameSync(backupDir, repoDir);
+  } catch (error) {
+    log(`Could not restore the previous cache: ${formatError(error)}`);
+  }
+}
+
+function replaceWithFreshClone(layout) {
   const suffix = `${process.pid}-${Date.now()}`;
-  const tempDir = path.join(cacheBase, `devvit-docs.tmp-${suffix}`);
-  const backupDir = path.join(cacheBase, `devvit-docs.old-${suffix}`);
-  let movedExisting = false;
+  const tempDir = path.join(layout.cacheDir, `devvit-docs.tmp-${suffix}`);
+  const backupDir = path.join(layout.cacheDir, `devvit-docs.old-${suffix}`);
+  const hadExistingCache = fs.existsSync(layout.repoDir);
 
   try {
     cloneRepo(tempDir);
-
-    if (fs.existsSync(repoDir)) {
-      fs.renameSync(repoDir, backupDir);
-      movedExisting = true;
-    }
-
-    fs.renameSync(tempDir, repoDir);
-
-    if (movedExisting) {
-      fs.rmSync(backupDir, { recursive: true, force: true });
-    }
   } catch (error) {
-    if (movedExisting && !fs.existsSync(repoDir) && fs.existsSync(backupDir)) {
-      try {
-        fs.renameSync(backupDir, repoDir);
-      } catch {
-        // Best effort: leave the backup in place rather than hiding the original error.
-      }
-    }
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    removeQuietly(tempDir);
     throw error;
   }
+
+  try {
+    if (hadExistingCache) fs.renameSync(layout.repoDir, backupDir);
+    fs.renameSync(tempDir, layout.repoDir);
+  } catch (error) {
+    restoreBackup(layout.repoDir, backupDir);
+    removeQuietly(tempDir);
+    throw error;
+  }
+
+  if (hadExistingCache) removeQuietly(backupDir);
 }
 
-function pullOrRefresh(repoDir, cacheBase) {
+function refreshRepo(layout) {
   try {
-    git("-C", repoDir, "pull", "--ff-only");
-    return true;
+    git("-C", layout.repoDir, "pull", "--ff-only");
+    return "cached";
   } catch {
     log("Pull failed - trying a fresh clone.");
-    try {
-      replaceWithFreshClone(repoDir, cacheBase);
-      return true;
-    } catch {
-      log("Fresh clone failed - using existing cache.");
-      return false;
-    }
+  }
+
+  try {
+    replaceWithFreshClone(layout);
+    return "cloned";
+  } catch {
+    log("Fresh clone failed - using existing cache.");
+    return null;
   }
 }
 
-// Staleness: marker file stores a timestamp. If younger than TTL, skip network.
-function isStale(metaPath, ttlHours) {
+function isStale(markerPath, ttlHours) {
   try {
-    const ts = parseInt(fs.readFileSync(metaPath, "utf8").trim(), 10) || 0;
-    return Date.now() - ts > ttlHours * 3600000;
+    const timestamp = Number(fs.readFileSync(markerPath, "utf8").trim());
+    return !timestamp || Date.now() - timestamp > ttlHours * 3_600_000;
   } catch {
     return true;
   }
 }
 
-function touchMeta(metaPath) {
-  fs.writeFileSync(metaPath, String(Date.now()), "utf8");
+function markFresh(markerPath) {
+  fs.writeFileSync(markerPath, String(Date.now()), "utf8");
+}
+
+function ensureRepo(layout, options) {
+  const cacheExists = fs.existsSync(layout.repoDir);
+
+  if (!cacheExists || !isGitRepo(layout.repoDir)) {
+    log(cacheExists ? "Cache invalid - cloning docs..." : "Cloning docs...");
+    replaceWithFreshClone(layout);
+    markFresh(layout.markerPath);
+    return "cloned";
+  }
+
+  // Reapply the canonical patterns so existing caches pick up additions.
+  configureSparseDocs(layout.repoDir);
+
+  if (!options.force && !isStale(layout.markerPath, options.ttlHours)) {
+    log("Cache fresh — skipping fetch.");
+    return "cached";
+  }
+
+  log(
+    options.force ? "Force-pulling docs..." : "Cache stale — pulling docs...",
+  );
+  const cacheStatus = refreshRepo(layout);
+  if (cacheStatus) markFresh(layout.markerPath);
+  return cacheStatus || "cached";
 }
 
 function uniqueExistingDirs(dirs) {
   const seen = new Set();
-  const existing = [];
-
-  for (const dir of dirs) {
-    if (!dir) continue;
-    if (!fs.existsSync(dir)) continue;
+  return dirs.filter((dir) => {
+    if (!dir || !fs.existsSync(dir)) return false;
 
     const resolved = path.resolve(dir);
-    if (seen.has(resolved)) continue;
+    if (seen.has(resolved)) return false;
 
     seen.add(resolved);
-    existing.push(resolved);
-  }
-
-  return existing;
+    return true;
+  });
 }
 
 function isSameOrWithin(child, parent) {
@@ -229,16 +252,8 @@ function isSameOrWithin(child, parent) {
   );
 }
 
-function getRepoCommit(repoDir) {
-  try {
-    return git("-C", repoDir, "rev-parse", "HEAD");
-  } catch {
-    return null;
-  }
-}
-
 function validateDocsCheckout(repoDir) {
-  const trackedPaths = git(
+  const trackedDocs = git(
     "-C",
     repoDir,
     "ls-tree",
@@ -250,16 +265,13 @@ function validateDocsCheckout(repoDir) {
     "versioned_docs",
   )
     .split(/\r?\n/)
-    .filter(Boolean);
+    .filter((trackedPath) => DOC_FILE_PATTERN.test(trackedPath));
 
-  const docPaths = trackedPaths.filter((trackedPath) =>
-    DOC_FILE_PATTERN.test(trackedPath),
-  );
-  if (docPaths.length === 0) {
+  if (trackedDocs.length === 0) {
     throw new Error("The docs repository contains no Markdown files.");
   }
 
-  const missingDocs = docPaths.filter(
+  const missingDocs = trackedDocs.filter(
     (trackedPath) => !fs.existsSync(path.join(repoDir, trackedPath)),
   );
   if (missingDocs.length > 0) {
@@ -269,154 +281,97 @@ function validateDocsCheckout(repoDir) {
         .join(", ")}.`,
     );
   }
-
-  const unexpectedContent = trackedPaths.filter(
-    (trackedPath) =>
-      !DOC_FILE_PATTERN.test(trackedPath) &&
-      !trackedPath.split("/").includes("assets"),
-  );
-  if (unexpectedContent.length > 0) {
-    throw new Error(
-      `The docs repository contains unsupported non-asset content, including ${unexpectedContent
-        .slice(0, 3)
-        .join(", ")}. Update the sparse checkout patterns.`,
-    );
-  }
-
-  return docPaths.length;
 }
 
-function detectVersion(projectDir) {
+function detectVersion(packagePath) {
   try {
-    const pkg = JSON.parse(
-      fs.readFileSync(path.join(projectDir, "package.json"), "utf8"),
-    );
-    const deps = { ...pkg.devDependencies, ...pkg.dependencies };
-    const ver =
-      deps.devvit || deps["@devvit/web"] || deps["@devvit/start"] || "";
-    const m = String(ver).match(/(\d+)\.(\d+)/);
-    return m ? `${m[1]}.${m[2]}` : null;
+    const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+    const dependencies = { ...pkg.devDependencies, ...pkg.dependencies };
+    const declaredVersion =
+      dependencies.devvit ||
+      dependencies["@devvit/web"] ||
+      dependencies["@devvit/start"] ||
+      "";
+    const match = String(declaredVersion).match(/(\d+)\.(\d+)/);
+    return match ? `${match[1]}.${match[2]}` : null;
   } catch {
     return null;
   }
 }
 
-function resolveDocsRoot(repoDir, version) {
-  if (version) {
-    const versioned = path.join(
-      repoDir,
-      "versioned_docs",
-      `version-${version}`,
-    );
-    if (fs.existsSync(versioned)) {
-      return {
-        docsRoot: versioned,
-        docsRootType: "versioned",
-        matchedVersion: true,
-      };
-    }
-  }
+function selectDocsRoot(layout, version) {
+  const versionedRoot = version
+    ? path.join(layout.versionedDocsDir, `version-${version}`)
+    : null;
+  const matchedVersion = Boolean(versionedRoot && fs.existsSync(versionedRoot));
+
   return {
-    docsRoot: path.join(repoDir, "docs"),
-    docsRootType: "latest",
-    matchedVersion: false,
+    docsRoot: matchedVersion ? versionedRoot : layout.docsDir,
+    matchedVersion,
   };
 }
 
-function getVersionedPublicApiRoots(repoDir) {
-  const versionedDocsRoot = path.join(repoDir, "versioned_docs");
+function getVersionedPublicApiRoots(layout) {
   try {
     return fs
-      .readdirSync(versionedDocsRoot, { withFileTypes: true })
+      .readdirSync(layout.versionedDocsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) =>
-        path.join(versionedDocsRoot, entry.name, ...PUBLIC_API_PATH),
+        path.join(layout.versionedDocsDir, entry.name, ...PUBLIC_API_PATH),
       );
   } catch {
     return [];
   }
 }
 
-function resolveSearchPaths(repoDir, docsRoot) {
-  const redditApiRoot = path.join(repoDir, ...REDDIT_API_PATH);
+function resolveSearchPaths(layout, docsRoot) {
   const searchRoots = uniqueExistingDirs([
     docsRoot,
-    isSameOrWithin(redditApiRoot, docsRoot) ? null : redditApiRoot,
+    isSameOrWithin(layout.redditApiDir, docsRoot) ? null : layout.redditApiDir,
   ]);
-
   const excludeRoots = uniqueExistingDirs([
-    path.join(repoDir, "docs", ...PUBLIC_API_PATH),
+    layout.publicApiDir,
     path.join(docsRoot, ...PUBLIC_API_PATH),
-    ...getVersionedPublicApiRoots(repoDir),
+    ...getVersionedPublicApiRoots(layout),
   ]);
 
   return { searchRoots, excludeRoots };
 }
 
 function main() {
-  const args = parseArgs(process.argv);
-  const cacheBase =
-    args.cacheDir ||
-    path.join(args.projectDir, "node_modules", ".cache", "devvit-skills");
-  const repoDir = path.join(cacheBase, "devvit-docs");
-  const metaPath = path.join(cacheBase, ".devvit-docs-fetched");
+  const options = readOptions(process.argv);
+  const layout = createLayout(options);
 
-  fs.mkdirSync(cacheBase, { recursive: true });
+  fs.mkdirSync(layout.cacheDir, { recursive: true });
 
-  let refreshed = false;
-  if (!fs.existsSync(repoDir) || !isGitRepo(repoDir)) {
-    log(
-      fs.existsSync(repoDir)
-        ? "Cache invalid - cloning docs (sparse partial)..."
-        : "Cloning docs (sparse partial)...",
-    );
-    replaceWithFreshClone(repoDir, cacheBase);
-    touchMeta(metaPath);
-    refreshed = true;
-  } else {
-    // Reapply the canonical patterns so older sparse caches pick up any additions.
-    configureSparseDocs(repoDir);
-  }
+  const cacheStatus = ensureRepo(layout, options);
+  validateDocsCheckout(layout.repoDir);
 
-  if (!refreshed && (args.force || isStale(metaPath, args.ttlHours))) {
-    log(args.force ? "Force-pulling docs..." : "Cache stale — pulling docs...");
-    if (pullOrRefresh(repoDir, cacheBase)) {
-      touchMeta(metaPath);
-    }
-  } else if (!refreshed) {
-    log("Cache fresh — skipping fetch.");
-  }
-
-  const docsFileCount = validateDocsCheckout(repoDir);
-  const version = detectVersion(args.projectDir);
-  const docsRoot = resolveDocsRoot(repoDir, version);
-  const searchPaths = resolveSearchPaths(repoDir, docsRoot.docsRoot);
+  const appDevvitVersion = detectVersion(layout.packagePath);
+  const docsSelection = selectDocsRoot(layout, appDevvitVersion);
+  const searchPaths = resolveSearchPaths(layout, docsSelection.docsRoot);
 
   process.stdout.write(
-    JSON.stringify(
+    `${JSON.stringify(
       {
-        cacheDir: cacheBase,
-        docsRoot: docsRoot.docsRoot,
-        repoDir,
+        cacheStatus,
+        docsRoot: docsSelection.docsRoot,
+        repoDir: layout.repoDir,
         searchRoots: searchPaths.searchRoots,
         excludeRoots: searchPaths.excludeRoots,
-        docsRootType: docsRoot.docsRootType,
-        matchedVersion: docsRoot.matchedVersion,
-        appDevvitVersion: version || null,
-        docsRepoCommit: getRepoCommit(repoDir),
-        cloneMode: isBloblessPartialClone(repoDir)
-          ? "sparse-partial"
-          : "legacy-full",
-        docsFileCount,
+        matchedVersion: docsSelection.matchedVersion,
+        appDevvitVersion,
+        docsRepoCommit: tryGit("-C", layout.repoDir, "rev-parse", "HEAD"),
       },
       null,
       2,
-    ) + "\n",
+    )}\n`,
   );
 }
 
 try {
   main();
 } catch (error) {
-  fail(formatError(error));
+  process.stderr.write(`[devvit-docs] Error: ${formatError(error)}\n`);
+  process.exitCode = 1;
 }
