@@ -48,6 +48,12 @@ Install one skill by name:
 npx skills add reddit/devvit-skills --skill devvit-docs
 ```
 
+Install only the Journeys skill:
+
+```bash
+npx skills add reddit/devvit-skills --skill devvit-journeys
+```
+
 The default installation applies to the current project. Add `--global` if you want the skill available in all of your projects:
 
 ```bash
@@ -91,6 +97,30 @@ Where is the form API documented?
 ```
 
 The first lookup downloads a local, text-only copy of the docs. Later lookups reuse that cache and refresh it when needed. The skill requires Git and network access for the initial download.
+
+### `devvit-journeys`
+
+Use this skill to add or review [Devvit Journeys](https://developers.reddit.com/docs/capabilities/analytics/devvit-journeys). It maps the app's actual user flow to Journey events, chooses the right client or server integration, and checks receipts, allowlisting, and dashboard timing.
+
+Example requests:
+
+```text
+Add Devvit Journeys to this game.
+```
+
+```text
+Review our journey map before app review.
+```
+
+```text
+Why are our Journey events not allowlisted?
+```
+
+```text
+Instrument start, progress, and completion for this app.
+```
+
+Use `devvit-docs` for general API lookup and `devvit-journeys` for Journey-specific design, implementation, review, and troubleshooting.
 
 ## Manage installed skills
 
