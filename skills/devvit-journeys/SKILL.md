@@ -1,6 +1,6 @@
 ---
 name: devvit-journeys
-description: 'Design, add, review, or troubleshoot Devvit Journeys telemetry in Devvit Web apps. Use for journey maps, lifecycle events, receipts, allowlisting, or Journey analytics (trigger phrases: "add journeys", "journey map", "journey analytics", "journey receipt", "instrument my game").'
+description: 'Design, add, review, or troubleshoot server-authoritative Devvit Journeys telemetry in Devvit Web apps. Use for journey maps, lifecycle events, receipts, allowlisting, or Journey analytics (trigger phrases: "add journeys", "journey map", "journey analytics", "journey receipt", "instrument my game").'
 ---
 
 # Devvit Journeys
@@ -23,7 +23,7 @@ Map a Devvit Web app's actual user flow to Journey events, implement them, and v
 2. Read the current official documentation for [Devvit Journeys](https://developers.reddit.com/docs/capabilities/analytics/devvit-journeys), [Journey receipts](https://developers.reddit.com/docs/capabilities/analytics/journeys-receipts), and, when relevant, the [Journeys dashboard](https://developers.reddit.com/docs/capabilities/analytics/journeys-dashboard).
 3. Before editing, map concrete code paths to the ready point, explicit start, meaningful progress milestones, useful interactions, and every explicit terminal outcome.
 4. If the code leaves multiple plausible journey boundaries that would produce materially different metrics, present the alternatives and ask the user to choose. Otherwise, state the inferred map and continue.
-5. Choose the client-managed or server-authoritative integration described below. Reuse the app's existing server framework and routing conventions.
+5. Prefer the server-authoritative integration described below. Use client-managed events only where the server cannot observe the event directly, and reuse the app's existing server framework and routing conventions.
 6. Instrument only the mapped lifecycle, then run the repository's focused tests, typecheck, and lint or formatting checks.
 7. Exercise the real flow when possible and inspect each returned receipt. A successful HTTP response alone does not prove that an event was recorded.
 
@@ -56,9 +56,9 @@ Call `appReady()` once per app load. Set `complete` explicitly on every end stat
    ```
 
 2. Confirm that `@devvit/analytics` is available and compatible with the app's Devvit version. Use the project's existing package manager if a dependency change is needed.
-3. Prefer the client telemetry API from `@devvit/analytics/client/reddit` for ordinary UI lifecycle events. Mount the documented telemetry route adapter on the server and let the client manage the active `journeyId`.
-4. Do not pass or store the `journeyId` manually for client-managed events, and do not depend on the SDK's storage implementation.
-5. Use server-authoritative events when a terminal result or milestone must come from trusted server state. Pass the active client journey ID through the app's existing request, validate the request using existing conventions, and call the server API from `@devvit/analytics/server/reddit`.
+3. Prefer the server telemetry API from `@devvit/analytics/server/reddit` for journey starts, milestones, and terminal events. Pass the active client journey ID through the app's existing request, validate the request using existing conventions, and derive the event from trusted server state.
+4. Use the client telemetry API from `@devvit/analytics/client/reddit` only for events the server cannot observe directly, such as `appReady()`. Mount the documented telemetry route adapter on the server and let the client manage the active `journeyId`.
+5. Do not pass or store the `journeyId` manually for client-managed events, and do not depend on the SDK's storage implementation.
 6. Await telemetry calls where their result is used for validation or diagnostics. Do not show receipt messages as end-user product copy.
 
 ## Verify Receipts and Analytics
