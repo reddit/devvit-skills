@@ -100,7 +100,7 @@ The first lookup downloads a local, text-only copy of the docs. Later lookups re
 
 ### `devvit-journeys`
 
-Use this skill to add or review [Devvit Journeys](https://developers.reddit.com/docs/capabilities/analytics/devvit-journeys). It maps the app's actual user flow to Journey events, prefers a server-authoritative implementation, and checks receipts, allowlisting, and dashboard timing.
+Use this skill to add or review [Devvit Journeys](https://developers.reddit.com/docs/capabilities/analytics/devvit-journeys). It maps the app's actual user flow to Journey events, checks SDK and server-framework compatibility, and prefers server-observed events when the app has authoritative gameplay state. It verifies lifecycle behavior and receipts while distinguishing expected app-version approval gates from implementation errors.
 
 Example requests:
 

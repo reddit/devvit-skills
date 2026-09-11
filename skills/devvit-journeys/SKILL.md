@@ -1,92 +1,92 @@
 ---
 name: devvit-journeys
-description: 'Design, add, review, or troubleshoot server-authoritative Devvit Journeys telemetry in Devvit Web apps. Use for journey maps, lifecycle events, receipts, allowlisting, or Journey analytics (trigger phrases: "add journeys", "journey map", "journey analytics", "journey receipt", "instrument my game").'
+description: 'Design, add, review, or troubleshoot Devvit Journeys in Devvit Web apps. Use for "add journeys", "journey map", "journey analytics", "journey receipts", or "instrument my game".'
 ---
 
 # Devvit Journeys
 
-Map a Devvit Web app's actual user flow to Journey events, implement them, and verify that Reddit records them.
+Map the app's actual user flow to Journey events, implement them, and verify the integration within the app version's approval state.
 
-**Constraints:**
+## Constraints
 
-- Devvit Journeys supports only Devvit Web apps (WebViews). If the app is not a WebView app, explain the limitation and stop.
-- Use the official [`reddit/devvit-docs`](https://github.com/reddit/devvit-docs) repository as the source of truth. If `devvit-docs` is installed, use it for version-matched documentation lookup.
-- Do not use `Journey.Start` for an app load, component mount, page view, or other passive event.
-- Except for `App.Ready`, fire events only after committed user actions or their resulting terminal outcomes. Do not instrument `mouseDown`, `touchStart`, or inputs that can still be canceled.
-- Do not put PII or free-form user content in `action`, `actionDetails`, or other user-defined fields. Prefer stable, bounded values.
-- Journey maps require review, and events from non-allowlisted apps are dropped. Flag both external requirements when they are unresolved; do not invent an approval or allowlisting process.
-- Do not silently upgrade Devvit dependencies. If the installed version does not expose the documented Journeys API, explain the required update before changing versions.
+- Journeys supports Devvit Web apps (WebViews) only.
+- Use the official [`reddit/devvit-docs`](https://github.com/reddit/devvit-docs) repository and the installed SDK's exports and types. Use `devvit-docs` for version-matched lookup when installed. If documentation and the installed API differ, report the difference rather than copying incompatible calls.
+- Do not start journeys on load, mount, page view, or other passive activity. Except for `App.Ready`, emit only after committed user actions or their resulting terminal outcomes, never on cancelable `mouseDown` or `touchStart` input.
+- Do not attach PII or free-form user content. Use stable, bounded actions and metadata.
+- Recording requires Reddit's approval of the app version and journey map; app allowlisting also applies. Expected approval gating is not an implementation failure. Do not publish, seek approval, or change release state merely to obtain recorded receipts.
+- Explain necessary SDK or peer-dependency updates before changing versions. Preserve the app's package-manager convention and update its maintained lockfiles; do not silently leave a second maintained lockfile inconsistent.
 
 ## How It Works
 
-1. Inspect `devvit.json`, `package.json`, the client and server entry points, existing telemetry, and the handlers for the user's actual flow.
-2. Read the current official documentation for [Devvit Journeys](https://developers.reddit.com/docs/capabilities/analytics/devvit-journeys), [Journey receipts](https://developers.reddit.com/docs/capabilities/analytics/journeys-receipts), and, when relevant, the [Journeys dashboard](https://developers.reddit.com/docs/capabilities/analytics/journeys-dashboard).
-3. Before editing, map concrete code paths to the ready point, explicit start, meaningful progress milestones, useful interactions, and every explicit terminal outcome.
-4. If the code leaves multiple plausible journey boundaries that would produce materially different metrics, present the alternatives and ask the user to choose. Otherwise, state the inferred map and continue.
-5. Prefer the server-authoritative integration described below. Use client-managed events only where the server cannot observe the event directly, and reuse the app's existing server framework and routing conventions.
-6. Instrument only the mapped lifecycle, then run the repository's focused tests, typecheck, and lint or formatting checks.
-7. Exercise the real flow when possible and inspect each returned receipt. A successful HTTP response alone does not prove that an event was recorded.
+1. Inspect `devvit.json`, dependencies and lockfiles, client/server entrypoints, existing telemetry, and actual start, progress, result, reset, and navigation handlers. Capture baseline test/typecheck/lint failures so existing defects are not attributed to the integration.
+2. Read [Devvit Journeys](https://developers.reddit.com/docs/capabilities/analytics/devvit-journeys) and [Journey receipts](https://developers.reddit.com/docs/capabilities/analytics/journeys-receipts). Read the [dashboard documentation](https://developers.reddit.com/docs/capabilities/analytics/journeys-dashboard) when checking aggregate data.
+3. State the concrete journey map before editing. Ask about boundaries only when plausible alternatives materially change the metrics. Account for tutorial, guest, retry, and resumed-play paths that the app actually supports.
+4. Check SDK compatibility, choose event ownership, and integrate using the guidance below. Read [framework integration](references/framework-integration.md) when mounting client routes or mixing server and client events.
+5. Test the mapped lifecycle, including ordering and failure behavior, then run the relevant repository checks and build.
+6. Exercise the real flow when available. Save receipt diagnostics and distinguish local tests, live integration, and recorded analytics. Stop at an expected approval gate after verifying the permitted paths.
 
 ## Map Events to User Behavior
 
-| API call         | Use it when                                                  | Important fields                                                   |
-| ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------------ |
-| `appReady()`     | The app has finished loading and is interactive              | None                                                               |
-| `startJourney()` | The user explicitly begins the mapped experience             | None                                                               |
-| `progress()`     | The user reaches a meaningful milestone                      | `progress` from `0.0` to `1.0`; optional `action`, `actionDetails` |
-| `interaction()`  | The user completes a useful, stateless interaction           | `action`; optional `actionDetails`                                 |
-| `endJourney()`   | The user reaches an explicit success, failure, or quit state | Optional `complete`; optional `game.win` and `game.score`          |
+| Event            | Concrete trigger                                                        | Payload                                                            |
+| ---------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `appReady()`     | The relevant entrypoint has usable data and is interactive              | None                                                               |
+| `startJourney()` | The user commits to a new attempt                                       | None                                                               |
+| `progress()`     | A milestone with a defensible fraction of the experience                | `progress` in `[0, 1]`; optional bounded `action`, `actionDetails` |
+| `interaction()`  | A useful committed action within the mapped experience                  | Bounded `action`; optional `actionDetails`                         |
+| `endJourney()`   | Success, failure, explicit quit, or confirmed replacement of an attempt | Explicit `complete`; optional `game.win`, `game.score`             |
 
-Place calls in the handler that commits the state transition, after the action succeeds. Avoid duplicate instrumentation in both a UI handler and the server operation it invokes.
+Instrument the handler that commits the transition, not both that handler and a rendering effect. `complete` expresses completion of the mapped experience; do not equate every terminal state with success. Set it explicitly for every end path. A restart should end an unfinished attempt before starting another; viewing saved results must not create a new completion.
 
-Call `appReady()` once per app load. Set `complete` explicitly on every end state so completion-rate metrics distinguish a finished experience from failure or an explicit quit.
+Omit progress when no meaningful fraction exists. Do not invent percentages from elapsed time, clicks, or an unbounded score. Use bounded interactions for useful milestones instead.
 
-`progress()` and `interaction()` can auto-start a missing journey, but call `startJourney()` at the intended user start so start-rate metrics retain their meaning.
+Call ready once per relevant app load, including framework remount behavior. Do not fire ready while loading or on a failed/empty game state. For multiple entrypoints, state which load is measured so readiness counts are not accidentally doubled.
 
-## Implement the Integration
+Always start explicitly. Auto-start behavior varies by SDK: in 0.14.3, `progress()` may start a journey while `interaction()` can send without one. Do not rely on either method to establish the intended boundary.
 
-1. Enable the capability in `devvit.json`:
+## SDK and Event Ownership
 
-   ```json
-   {
-     "permissions": {
-       "journeys": true
-     }
-   }
-   ```
+Enable `permissions.journeys: true` in `devvit.json` and declare `@devvit/analytics` directly if the app imports it.
 
-2. Confirm that `@devvit/analytics` is available and compatible with the app's Devvit version. Use the project's existing package manager if a dependency change is needed.
-3. Prefer the server telemetry API from `@devvit/analytics/server/reddit` for journey starts, milestones, and terminal events. Pass the active client journey ID through the app's existing request, validate the request using existing conventions, and derive the event from trusted server state.
-4. Use the client telemetry API from `@devvit/analytics/client/reddit` only for events the server cannot observe directly, such as `appReady()`. Mount the documented telemetry route adapter on the server and let the client manage the active `journeyId`.
-5. Do not pass or store the `journeyId` manually for client-managed events, and do not depend on the SDK's storage implementation.
-6. Await telemetry calls where their result is used for validation or diagnostics. Do not show receipt messages as end-user product copy.
+Check the installed declarations before coding. SDK 0.14.3 was verified to expose `startJourney(): Promise<{ journeyId, receipt }>` and `{ receipt }` from the other calls. Older builds can return a string from start and void from other methods. 0.14.3 is a tested reference, not a claimed minimum or a reason to downgrade a newer app. Align Devvit packages and inspect peer requirements when an update is needed; `@devvit/start@0.14.3` requires Vite >=7.3.5.
 
-## Verify Receipts and Analytics
+Choose ownership from what the app can actually observe:
 
-Use `receipt.status` for branching, tests, and tooling; use `receipt.message` only as developer-facing diagnostic text.
+- **Server-observed transitions:** Prefer `@devvit/analytics/server/reddit` after validated gameplay commits. Derive results from trusted state and reuse existing request validation and routing. Receiving a client-supplied score does not make it authoritative.
+- **Client-only gameplay:** Use `@devvit/analytics/client/reddit` with matching server routes. A local game or guest session need not acquire a server gameplay model just to add telemetry. Delayed result uploads after login are persistence, not new play or new completions.
+- **Mixed ownership:** Carry the SDK's active ID through the existing request and define who starts, ends, and clears it. Never emit the same transition from both sides. See the reference for ID handoff and late-response handling.
 
-- `JOURNEY_RECEIPT_VALID` means the event was accepted and recorded.
-- `JOURNEY_RECEIPT_DENIED_NOT_ALLOWLISTED` means the integration reached Reddit, but the app still needs allowlisting.
-- `JOURNEY_RECEIPT_DENIED_RATE_LIMITED` and `JOURNEY_RECEIPT_DENIED_DUPLICATE` mean the event was valid but not recorded again.
-- `JOURNEY_RECEIPT_INVALID` means the payload was rejected.
-- `JOURNEY_RECEIPT_UNSPECIFIED` means Reddit could not confirm whether it recorded the event.
+For client-managed events, let the SDK own the ID. Do not implement separate ID storage or rely on the SDK's storage key. Define reload behavior from the game: resume only if gameplay resumes; a new explicit attempt must not reuse an abandoned stored journey. Use public SDK session methods when reconciling that state.
 
-Test at least one complete path from ready through end, plus applicable failure and explicit quit paths. Confirm that repeated play can start a new journey after `endJourney()`.
+## Ordering and Failure Handling
 
-Use receipts for immediate implementation feedback. The dashboard aggregates data by app and UTC day, so an empty dashboard does not immediately mean the integration failed.
+Telemetry must not control gameplay success or block saving a result. Await calls for ordering and diagnostics inside a telemetry task, with failures contained; do not make the user wait for analytics.
+
+Keep start, interactions, end, and replay ordered when requests overlap. Guard repeated terminal callbacks and committed start actions without suppressing an intentional replay. Keep side effects out of React state-updater functions, which may be invoked more than once.
+
+Bound transport waits and prevent unbounded queued work during an outage. A bare `Promise.race` does not cancel the losing request: a late start may still overwrite the SDK's active ID. Prefer aborting the underlying fetch or another SDK-supported cancellation mechanism. After a failed start, do not let a later progress call auto-start a different attempt. Verify that a failed end cannot leave the next attempt attached to the previous ID.
+
+## Verification and Receipts
+
+Use `receipt.status` for application/test branching and `receipt.message` for developer diagnostics. Do not use exact message text as a programmatic API contract or show receipt text to players. Log a serialized record containing the event, receipt status/message, and returned journey ID when available (for example, `JSON.stringify({ event, ...response })`). Passing only an object to `console.info` can collapse to `Object` in exported browser/CLI logs, hiding the evidence needed for verification.
+
+| Status                                                                     | Interpretation                                                                |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `JOURNEY_RECEIPT_VALID`                                                    | Accepted and recorded                                                         |
+| `JOURNEY_RECEIPT_DENIED_NOT_ALLOWLISTED`                                   | Reached Reddit; app is not enabled for recording                              |
+| `JOURNEY_RECEIPT_DENIED_RATE_LIMITED` / `JOURNEY_RECEIPT_DENIED_DUPLICATE` | Skipped; do not retry blindly or count as another recorded event              |
+| `JOURNEY_RECEIPT_INVALID`                                                  | Payload rejected; investigate the integration                                 |
+| `JOURNEY_RECEIPT_UNSPECIFIED`                                              | Recording not confirmed; inspect diagnostics and the version's approval state |
+
+A playtest version can return UNSPECIFIED with the diagnostic `Denied: Event was valid, but Journey telemetry is not recorded for playtest app versions.` That is expected approval gating, not evidence of a code defect or missing app allowlisting. Capture the status and diagnostic, report that live integration was exercised, and leave ingestion verification pending an approved version. Do not treat every UNSPECIFIED response as this case: transport failures and other unknown outcomes still need investigation.
+
+Test success, applicable failure/quit, and replay, plus the boundaries most likely to duplicate or misattribute events: remount, canceled confirmation, rapid start/end/restart, stale session, and failed requests. Verify both the actual UI/handler wiring and the client/server contract. Mock receipts prove only local behavior; label them as simulated. Compare repository checks with the baseline.
+
+Use three separate outcomes in the result:
+
+1. **Local implementation:** which paths and tests passed, and any new versus existing check failures.
+2. **Live integration:** the paths actually exercised and the returned statuses/diagnostics, including expected approval gating.
+3. **Recorded analytics:** observed VALID receipts from an eligible version, or explicitly pending verification. The dashboard aggregates by app and UTC day, so an empty dashboard alone does not diagnose integration failure.
 
 ## Present Results to User
 
-- Show the final journey map with the concrete handler or file for each event.
-- Summarize configuration, client, server, and test changes.
-- Report the receipt statuses you observed, separating implementation success from allowlisting or journey-map approval.
-- State which real user paths were exercised and anything that remains unverified.
-
-## Troubleshooting
-
-- **Events are dropped** — Inspect `receipt.status`; the app may be valid but not allowlisted.
-- **Start is reused** — The client already has an active journey. Check for a missing terminal `endJourney()` or a duplicate start handler.
-- **Progress or interaction starts unexpectedly** — Add the missing explicit `startJourney()` at the intended user action and remove passive instrumentation.
-- **Receipt is invalid** — Check required fields, the `0.0` to `1.0` progress range, and non-empty action values.
-- **Dashboard is empty** — Verify receipts first, then account for UTC-day aggregation and the app's approval state.
-- **App is not a WebView** — Journeys are not supported for that app type.
+Show the journey map with concrete handlers/files, summarize configuration and dependency changes, link logs and test evidence, and identify any real paths left untested. Treat expected approval gates as deployment prerequisites, not a reason to undo a working integration or inflate claims of recording.
