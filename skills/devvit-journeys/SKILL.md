@@ -5,7 +5,7 @@ description: 'Design, add, review, or troubleshoot Devvit Journeys in Devvit Web
 
 # Devvit Journeys
 
-Map the app's actual user flow to Journey events, implement them, and verify the integration within the app version's approval state.
+Map the app's actual user flow to Journey events, implement them, and verify the integration within the app version's approval state. Progress is a core downstream ranking and engagement signal: every integration must include it.
 
 ## Constraints
 
@@ -31,13 +31,15 @@ Map the app's actual user flow to Journey events, implement them, and verify the
 | ---------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `appReady()`     | The relevant entrypoint has usable data and is interactive              | None                                                               |
 | `startJourney()` | The user commits to a new attempt                                       | None                                                               |
-| `progress()`     | A milestone with a defensible fraction of the experience                | `progress` in `[0, 1]`; optional bounded `action`, `actionDetails` |
+| `progress()`     | A committed milestone; at least one per started journey                 | `progress` in `[0, 1]`; optional bounded `action`, `actionDetails` |
 | `interaction()`  | A useful committed action within the mapped experience                  | Bounded `action`; optional `actionDetails`                         |
 | `endJourney()`   | Success, failure, explicit quit, or confirmed replacement of an attempt | Explicit `complete`; optional `game.win`, `game.score`             |
 
 Instrument the handler that commits the transition, not both that handler and a rendering effect. `complete` expresses completion of the mapped experience; do not equate every terminal state with success. Set it explicitly for every end path. A restart should end an unfinished attempt before starting another; viewing saved results must not create a new completion.
 
-Omit progress when no meaningful fraction exists. Do not invent percentages from elapsed time, clicks, or an unbounded score. Use bounded interactions for useful milestones instead.
+Always map at least one `progress()` event into each started journey, ordered after Start and before End. Prefer a natural completion fraction when one exists. Otherwise, use a fixed milestone such as `progress: 0.5` on the first committed gameplay action, with a bounded action such as `play_engaged`. Document that this is an engagement milestone, not a claim that the player is literally halfway finished. It can remain at `0.5` until End; there is no requirement to manufacture further percentages or send `1.0`.
+
+The same committed action may explicitly start the journey and then emit its first progress event. This covers short attempts and immediate wins without starting on load. Emit the fallback milestone once per journey, reset that guard for replay, and keep failed-start handling intact: do not let progress auto-start another journey. Interactions may supplement progress but must not replace it. For first-line Bingo, for example, the first committed tile change can send Start, Progress (`0.5`, `play_engaged`), then its tile interaction; the first completed line sends End.
 
 Call ready once per relevant app load, including framework remount behavior. Do not fire ready while loading or on a failed/empty game state. For multiple entrypoints, state which load is measured so readiness counts are not accidentally doubled.
 
@@ -79,7 +81,7 @@ Use `receipt.status` for application/test branching and `receipt.message` for de
 
 A playtest version can return UNSPECIFIED with the diagnostic `Denied: Event was valid, but Journey telemetry is not recorded for playtest app versions.` That is expected approval gating, not evidence of a code defect or missing app allowlisting. Capture the status and diagnostic, report that live integration was exercised, and leave ingestion verification pending an approved version. Do not treat every UNSPECIFIED response as this case: transport failures and other unknown outcomes still need investigation.
 
-Test success, applicable failure/quit, and replay, plus the boundaries most likely to duplicate or misattribute events: remount, canceled confirmation, rapid start/end/restart, stale session, and failed requests. Verify both the actual UI/handler wiring and the client/server contract. Mock receipts prove only local behavior; label them as simulated. Compare repository checks with the baseline.
+Verify at least one Progress event between Start and End on success, applicable failure/quit, and replay, including a one-action completion. Check the fallback milestone fires once per journey, resets for replay, and does not emit on passive load or after a failed start. Test the boundaries most likely to duplicate or misattribute events: remount, canceled confirmation, rapid start/end/restart, stale session, and failed requests. Verify both the actual UI/handler wiring and the client/server contract. Mock receipts prove only local behavior; label them as simulated. Compare repository checks with the baseline.
 
 Use three separate outcomes in the result:
 
