@@ -5,7 +5,7 @@ description: 'Design, add, review, or troubleshoot Devvit Journeys in Devvit Web
 
 # Devvit Journeys
 
-Map the app's actual user flow to Journey events, implement them, and verify the integration within the app version's approval state. Progress is a core downstream ranking and engagement signal: every integration must include it.
+Add a thin telemetry wrapper around the app's existing gameplay signals and verify the integration within the app version's approval state. Progress is a core downstream ranking and engagement signal: every integration must include it.
 
 ## Constraints
 
@@ -20,10 +20,18 @@ Map the app's actual user flow to Journey events, implement them, and verify the
 
 1. Inspect `devvit.json`, dependencies and lockfiles, client/server entrypoints, existing telemetry, and actual start, progress, result, reset, and navigation handlers. Capture baseline test/typecheck/lint failures so existing defects are not attributed to the integration.
 2. Read [Devvit Journeys](https://developers.reddit.com/docs/capabilities/analytics/devvit-journeys) and [Journey receipts](https://developers.reddit.com/docs/capabilities/analytics/journeys-receipts). Read the [dashboard documentation](https://developers.reddit.com/docs/capabilities/analytics/journeys-dashboard) when checking aggregate data.
-3. State the concrete journey map before editing. Ask about boundaries only when plausible alternatives materially change the metrics. Account for tutorial, guest, retry, and resumed-play paths that the app actually supports.
+3. Before editing, map each event to an existing handler or state transition, citing its file/function and the signal it exposes. Reuse existing game helpers, constants, and SDK facilities. Mark missing or ambiguous signals as blocked under the scope rules below; do not fill the gaps with new gameplay logic. Account for tutorial, guest, retry, and resumed-play paths that the app actually supports.
 4. Check SDK compatibility, choose event ownership, and integrate using the guidance below. Read [framework integration](references/framework-integration.md) when mounting client routes or mixing server and client events.
 5. Test the mapped lifecycle, including ordering and failure behavior, then run the relevant repository checks and build.
 6. Exercise the real flow when available. Save receipt diagnostics and distinguish local tests, live integration, and recorded analytics. Stop at an expected approval gate after verifying the permitted paths.
+
+## Scope: Instrument Existing Behavior
+
+Implement telemetry calls, event metadata, SDK/configuration wiring, necessary adapters, and telemetry-specific ordering, deduplication, diagnostics, and failure isolation. Keep these changes small and reuse existing facilities. Do not implement or duplicate game rules, win/completion detection, scoring, reset/replay policies, persistence models, UI controls, or a parallel gameplay state machine to make a journey fit. Optional result fields must come from existing game results; omit them when absent. A telemetry guard may prevent duplicate emission from an existing transition; it must not invent that transition. If attaching events would require restructuring gameplay or state management, report that prerequisite instead of performing the rewrite.
+
+When a required signal is missing or ambiguous, tell the developer which event could not be placed, what code you inspected, and what decision or app-owned signal is needed. Defer the affected journey lifecycle until the developer supplies a clear existing hook or separately requests the prerequisite gameplay work. Do not silently ship Start/Progress as a complete integration when End cannot be mapped. Independent, clearly supported instrumentation such as Ready may be added, but label the result partial and avoid unused routes or scaffolding. A missing optional interaction or score need not block an otherwise complete map.
+
+Offer at most a brief, context-specific suggestion, without implementing it: “Could not add Journey.End: this Bingo app saves marked tiles but has no completion signal. If a completed line should end play, the game needs an explicit completion callback that telemetry can observe.” A product convention or a plausible metric is not evidence that the app already implements that rule. Required Progress does not override these scope limits: a fixed `0.5` engagement milestone may observe an existing committed action, but cannot justify inventing an End or new gameplay behavior.
 
 ## Map Events to User Behavior
 
@@ -39,7 +47,7 @@ Instrument the handler that commits the transition, not both that handler and a 
 
 Always map at least one `progress()` event into each started journey, ordered after Start and before End. Prefer a natural completion fraction when one exists. Otherwise, use a fixed milestone such as `progress: 0.5` on the first committed gameplay action, with a bounded action such as `play_engaged`. Document that this is an engagement milestone, not a claim that the player is literally halfway finished. It can remain at `0.5` until End; there is no requirement to manufacture further percentages or send `1.0`.
 
-The same committed action may explicitly start the journey and then emit its first progress event. This covers short attempts and immediate wins without starting on load. Emit the fallback milestone once per journey, reset that guard for replay, and keep failed-start handling intact: do not let progress auto-start another journey. Interactions may supplement progress but must not replace it. For first-line Bingo, for example, the first committed tile change can send Start, Progress (`0.5`, `play_engaged`), then its tile interaction; the first completed line sends End.
+The same committed action may explicitly start the journey and then emit its first progress event. This covers short attempts and immediate wins without starting on load. Emit the fallback milestone once per journey, reset that guard for replay, and keep failed-start handling intact: do not let progress auto-start another journey. Interactions may supplement progress but must not replace it. For a game that already exposes explicit start and completion hooks, the first committed play action can send Start, Progress (`0.5`, `play_engaged`), then its interaction; the existing completion hook sends End.
 
 Call ready once per relevant app load, including framework remount behavior. Do not fire ready while loading or on a failed/empty game state. For multiple entrypoints, state which load is measured so readiness counts are not accidentally doubled.
 
@@ -53,11 +61,11 @@ Check the installed declarations before coding. SDK 0.14.3 was verified to expos
 
 Choose ownership from what the app can actually observe:
 
-- **Server-observed transitions:** Prefer `@devvit/analytics/server/reddit` after validated gameplay commits. Derive results from trusted state and reuse existing request validation and routing. Receiving a client-supplied score does not make it authoritative.
+- **Server-observed transitions:** Prefer `@devvit/analytics/server/reddit` after validated gameplay commits. Use the game's existing results from trusted state and reuse existing request validation and routing. Receiving a client-supplied score does not make it authoritative.
 - **Client-only gameplay:** Use `@devvit/analytics/client/reddit` with matching server routes. A local game or guest session need not acquire a server gameplay model just to add telemetry. Delayed result uploads after login are persistence, not new play or new completions.
 - **Mixed ownership:** Carry the SDK's active ID through the existing request and define who starts, ends, and clears it. Never emit the same transition from both sides. See the reference for ID handoff and late-response handling.
 
-For client-managed events, let the SDK own the ID. Do not implement separate ID storage or rely on the SDK's storage key. Define reload behavior from the game: resume only if gameplay resumes; a new explicit attempt must not reuse an abandoned stored journey. Use public SDK session methods when reconciling that state.
+For client-managed events, let the SDK own the ID. Do not implement separate ID storage or rely on the SDK's storage key. Follow the game's existing reload/attempt boundaries; report ambiguity rather than choosing new ones: resume only if gameplay resumes; a new explicit attempt must not reuse an abandoned stored journey. Use public SDK session methods when reconciling that state.
 
 ## Ordering and Failure Handling
 
@@ -91,4 +99,4 @@ Use three separate outcomes in the result:
 
 ## Present Results to User
 
-Show the journey map with concrete handlers/files, summarize configuration and dependency changes, link logs and test evidence, and identify any real paths left untested. Treat expected approval gates as deployment prerequisites, not a reason to undo a working integration or inflate claims of recording.
+First report whether the lifecycle was fully instrumented or blocked by missing app signals. For a blocked event, state “could not add,” explain the missing hook, and give a short developer suggestion rather than claiming success. Show the journey map with concrete handlers/files, summarize configuration and dependency changes, link logs and test evidence, and identify any real paths left untested. Treat expected approval gates as deployment prerequisites, not a reason to undo a working integration or inflate claims of recording.
