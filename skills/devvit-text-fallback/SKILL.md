@@ -30,6 +30,10 @@ Build the fallback from the same public data used to create the post. Give someo
 - Include concise rules or instructions. For a daily puzzle, include its date, number, or public theme when available.
 - Include relevant public post content, such as a puzzle prompt or scoreboard summary, when it is useful outside the interactive view.
 
+Write directly to the reader. Start instructions with the action they can take, using concrete verbs that fit the app, such as “Browse,” “Choose,” “Find,” or “Play.” Use the app's actual behavior and control labels to decide what to say; do not apply the same call to action to every app.
+
+Keep the focus on the content and task. Omit introductions such as “In the interactive view,” “This app lets you,” or “Use the interface to.” Include the context needed to understand the action, but avoid explaining what the layout or a control's label already makes clear. Keep the fallback understandable on its own by naming its subject and purpose.
+
 Use actual app details rather than generic copy such as “This is an interactive post.” Keep the text readable on its own, with short paragraphs and simple Markdown. The documented limit is 40,000 characters; aim for a concise description rather than filling the limit. Escape dynamic values that should appear as literal text if they can contain Markdown syntax.
 
 Fallback content is shared with everyone. Exclude private state, per-user progress, unrevealed answers, and puzzle solutions. A text fallback provides a readable representation; it does not make an interactive game playable while logged out or replace accessibility work inside the app. Social sharing images and feed metadata are separate tasks.
