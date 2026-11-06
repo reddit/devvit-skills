@@ -5,7 +5,7 @@ description: Set up text fallback content when creating Devvit web app posts. Us
 
 # Set up Devvit text fallback
 
-Add meaningful Markdown or plain text to a Devvit web app's posts using the Reddit API. Text fallback provides readable content for Old Reddit and supports search discovery and accessibility on Reddit.
+Add meaningful Markdown or plain text content to a Devvit web app's posts using the Reddit API. Text fallback provides readable content in Old Reddit and supports search discovery. It can offer a text alternative, but does not by itself make the interactive app accessible.
 
 Apply changes to post creation code; leave existing posts unchanged.
 
@@ -18,7 +18,7 @@ Use the APIs supported by the installed SDK:
 - Use `reddit` from `@devvit/web/server` in server code and extend `reddit.submitCustomPost(...)`.
 - Add `textFallback: { text: fallbackText }` to the existing options. This is a post option, not a `devvit.json` setting. If Reddit API permission is missing, merge `"reddit": true` into the existing `permissions` object.
 
-Use the Markdown/plain-text `text` option for this task. Pass the text directly to the SDK; the app does not need to convert it to another format.
+Use textFallback.text for Markdown-formatted or plain text. Pass the string directly to the SDK; no conversion is needed.
 
 For current API details, consult the official [text fallback guide](https://developers.reddit.com/docs/capabilities/server/text_fallback) and [custom post guide](https://developers.reddit.com/docs/capabilities/creating_custom_post). Check the installed SDK types when a signature differs. If `devvit-docs` is installed, it can locate matching documentation; this skill also works without it.
 
