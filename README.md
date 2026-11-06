@@ -92,6 +92,22 @@ Where is the form API documented?
 
 The first lookup downloads a local, text-only copy of the docs. Later lookups reuse that cache and refresh it when needed. The skill requires Git and network access for the initial download.
 
+### `devvit-text-fallback`
+
+Sets up Markdown or plain-text fallback content for newly created Devvit web app posts, including guidance for search and accessibility support on Reddit. It follows the app's existing post creation paths.
+
+Install it on its own:
+
+```bash
+npx skills add reddit/devvit-skills --skill devvit-text-fallback
+```
+
+Then ask your agent:
+
+```text
+Add a useful text fallback to my daily puzzle app so its posts have readable content for search crawlers and screen readers.
+```
+
 ## Manage installed skills
 
 The `skills` CLI can show, update, and remove installed skills:
